@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Portal</title>
+
+<script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
+
+<style>
+* { box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
+
+body {
+  margin: 0;
+  height: 100vh;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.card {
+  width: 380px;
+  background: rgba(2,6,23,0.95);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+
+h2 { text-align: center; }
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 15px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(90deg, #38bdf8, #22c55e);
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.hidden { display: none; }
+
+#msg {
+  margin-top: 10px;
+  text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>🎓 College Portal</h2>
+
+  <!-- EMAIL OTP -->
+  <div id="authForm">
+    <input id="email" placeholder="College Email">
+    <button onclick="sendEmailOTP()">Send OTP</button>
+
+    <input id="emailOtp" placeholder="Enter OTP" class="hidden">
+    <button id="verifyBtn" class="hidden" onclick="verifyEmailOTP()">Verify OTP</button>
+  </div>
+
+  <!-- STUDENT DETAILS -->
+  <div id="studentForm" class="hidden">
+    <input id="name" placeholder="Student Name">
+    <input id="roll" placeholder="Roll Number">
+    <input id="marks" placeholder="Marks">
+    <input id="phone" placeholder="Do not Enter real mno (security perposes!)">
+    <button onclick="saveData()">Submit</button>
+  </div>
+
+  <p id="msg"></p>
+</div>
+
+<script>
+/* APPWRITE CONFIG */
+const { Client, Account, Databases, ID } = Appwrite;
+
+const client = new Client()
+  .setEndpoint("https://fra.cloud.appwrite.io/v1")
+  .setProject("6957926c002f2347df45");
+
+const account = new Account(client);
+const db = new Databases(client);
+
+const DB_ID = "college-db";
+const COL_ID = "students";
+
+let otpUserId = null;
+
+/* SEND EMAIL OTP */
+async function sendEmailOTP() {
+  try {
+    const email = document.getElementById("email").value;
+    const res = await account.createEmailToken(ID.unique(), email);
+
+    otpUserId = res.userId;
+    document.getElementById("emailOtp").classList.remove("hidden");
+    document.getElementById("verifyBtn").classList.remove("hidden");
+
+    showMsg("📧 OTP sent to email", false);
+  } catch (e) {
+    showMsg("❌ Failed to send OTP", true);
+  }
+}
+
+/* VERIFY EMAIL OTP */
+async function verifyEmailOTP() {
+  try {
+    const otp = document.getElementById("emailOtp").value;
+    await account.createSession(otpUserId, otp);
+
+    document.getElementById("authForm").classList.add("hidden");
+    document.getElementById("studentForm").classList.remove("hidden");
+
+    showMsg("✅ Email verified", false);
+  } catch {
+    showMsg("❌ Invalid OTP", true);
+  }
+}
+
+/* SAVE STUDENT DATA (PHONE NOT VERIFIED) */
+async function saveData() {
+  try {
+    const user = await account.get();
+
+    await db.createDocument(
+      DB_ID,
+      COL_ID,
+      ID.unique(),
+      {
+        name: document.getElementById("name").value,
+        roll: document.getElementById("roll").value,
+        marks: document.getElementById("marks").value,
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value
+      }
+    );
+
+    showMsg("✅ Data stored successfully", false);
+  } catch (err) {
+    console.error(err);
+    showMsg("❌ Failed to save data", true);
+  }
+}
+
+/* MESSAGE HELPER */
+function showMsg(text, isError) {
+  const msg = document.getElementById("msg");
+  msg.innerText = text;
+  msg.style.color = isError ? "#f87171" : "#4ade80";
+}
+</script>
+
+</body>
+</html>
